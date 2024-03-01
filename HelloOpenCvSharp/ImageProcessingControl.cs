@@ -24,9 +24,9 @@ namespace HelloOpenCvSharp
 
         private PictureBox _pictureBox;
 
-        private bool _isAnnotating;
+        private bool _isAnnotationDrawing, _isAnnotationResizing, _isAnnotationMoving;
         private Rectangle _annotationRect;
-        private System.Drawing.Point _annotationStartPoint;
+        private System.Drawing.Point _annotationStartPoint, _annotationLastLocation;
         private Mat _originalImage; // 原始图像
         private Mat _currentImage; // 当前图像
         private Bitmap _displayImage; // 显示图像
@@ -330,7 +330,7 @@ namespace HelloOpenCvSharp
             }
 
             // 仅在正在标注时绘制矩形框
-            if (_isAnnotating && _annotationRect.Width > 0 && _annotationRect.Height > 0)
+            if ((_isAnnotationDrawing || _isAnnotationResizing || _isAnnotationMoving) && _annotationRect.Width > 0 && _annotationRect.Height > 0)
             {
                 e.Graphics.DrawRectangle(Pens.Red, _annotationRect);
             }
@@ -355,41 +355,104 @@ namespace HelloOpenCvSharp
         {
             if (e.Button == MouseButtons.Left)
             {
-                /* 实现开始绘制标注的逻辑 */
-                _isAnnotating = true;
-                _annotationStartPoint = e.Location;
-                _annotationRect = new Rectangle(e.Location, new System.Drawing.Size());
+                if (IsMouseInResizeZone(e.Location) is Annotation annotationResize)
+                {
+                    _annotationRect = ToPictureBoxAnnotationRect(annotationResize);
+                    _annotations.Remove(annotationResize);
+                    //
+                    _isAnnotationResizing = true;
+                    _annotationStartPoint = e.Location;
+                }
+                else if (IsMouseInMoveZone(e.Location) is Annotation annotationMove)
+                {
+                    _annotationRect = ToPictureBoxAnnotationRect(annotationMove);
+                    _annotations.Remove(annotationMove);
+                    //
+                    _isAnnotationMoving = true;
+                    _annotationLastLocation = e.Location;
+                }
+                else
+                {
+                    /* 实现开始绘制标注的逻辑 */
+                    _isAnnotationDrawing = true;
+                    _annotationStartPoint = e.Location;
+                    _annotationRect = new Rectangle(e.Location, new System.Drawing.Size());
+                }
             }
+        }
+        private Annotation IsMouseInResizeZone(System.Drawing.Point location)
+        {
+            var mousePoint = ToOrgAnnotationPoint(location);
+            foreach (var annotation in _annotations)
+            {
+                Rectangle resizeZone = new Rectangle(annotation.GetRight() - 10, annotation.GetBottom() - 10, 10, 10);
+                if (resizeZone.Contains(mousePoint))
+                {
+                    // 如果找到，返回当前的调整区域矩形
+                    return annotation;
+                }
+            }
+            return null;
+        }
+        private Annotation IsMouseInMoveZone(System.Drawing.Point location)
+        {
+            var mousePoint = ToOrgAnnotationPoint(location);
+            foreach (var annotation in _annotations)
+            {
+                Rectangle moveZone = new Rectangle(annotation.GetLeft(), annotation.GetTop(), 10, 10);
+                if (moveZone.Contains(mousePoint))
+                {
+                    // 如果找到，返回当前的调整区域矩形
+                    return annotation;
+                }
+            }
+            return null;
         }
         void ContinueDrawingAnnotation(object sender, MouseEventArgs e)
         {
-            /* 实现继续绘制标注的逻辑 */
-            if (_isAnnotating)
+            if (_isAnnotationDrawing)
             {
                 _annotationRect.Width = e.X - _annotationStartPoint.X;
                 _annotationRect.Height = e.Y - _annotationStartPoint.Y;
-                //pictureBox1.Invalidate(); // 仅触发PictureBox的重绘
-                // showInfo($"annotationRect: {annotationRect}");
             }
-            else // 如果高亮的矩形框发生变化
+            else if (_isAnnotationResizing)
             {
-                // 转换成原图像坐标点
-                var mousePoint = ToOrgAnnotationPoint(e.Location);
-                var previousHighlighted = _highlightedAnnotation;
-                _highlightedAnnotation = _annotations.FirstOrDefault(ann => ann.Rect.Contains(mousePoint));
-                //if (highlightedAnnotation != previousHighlighted)
-                //{
-                //    pictureBox1.Invalidate(); // 如果高亮的矩形框发生变化，则需要重绘
-                //}
+                _annotationRect.Width = e.X - _annotationRect.X;
+                _annotationRect.Height = e.Y - _annotationRect.Y;
+            }
+            else if (_isAnnotationMoving)
+            {
+                int dx = e.X - _annotationLastLocation.X;
+                int dy = e.Y - _annotationLastLocation.Y;
+                _annotationRect = new Rectangle(_annotationRect.X + dx, _annotationRect.Y + dy, _annotationRect.Width, _annotationRect.Height);
+                _annotationLastLocation = e.Location;
+            }
+            else
+            {
+                if (IsMouseInResizeZone(e.Location) is Annotation annotationResize)
+                {
+                    this._pictureBox.Cursor = Cursors.SizeNWSE;
+                }
+                else if (IsMouseInMoveZone(e.Location) is Annotation annotationMove)
+                {
+                    this._pictureBox.Cursor = Cursors.SizeAll;
+                }
+                else
+                {
+                    this._pictureBox.Cursor = Cursors.Default;
+                    // 如果高亮的矩形框发生变化
+                    // 转换成原图像坐标点
+                    var mousePoint = ToOrgAnnotationPoint(e.Location);
+                    var previousHighlighted = _highlightedAnnotation;
+                    _highlightedAnnotation = _annotations.FirstOrDefault(ann => ann.Rect.Contains(mousePoint));
+                }
             }
         }
         void FinishDrawingAnnotation(object sender, MouseEventArgs e)
         {
             /* 实现完成绘制标注的逻辑 */
-            if (_isAnnotating)
+            if (_isAnnotationDrawing || _isAnnotationResizing || _isAnnotationMoving)
             {
-                _isAnnotating = false;
-
                 // 添加标注
                 {
                     if (_annotationRect.Width < 5 || _annotationRect.Height < 5)
@@ -412,8 +475,6 @@ namespace HelloOpenCvSharp
                         _pictureBox.Invalidate(); // 更新视图
                     }
                 }
-
-
             }
             else
             {
@@ -444,6 +505,8 @@ namespace HelloOpenCvSharp
                     }
                 }
             }
+
+            _isAnnotationDrawing = _isAnnotationMoving = _isAnnotationResizing = false;
         }
         // 分配标注的ID
         int AssignAnnotationId()
