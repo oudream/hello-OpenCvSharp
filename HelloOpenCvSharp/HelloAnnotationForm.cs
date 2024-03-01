@@ -107,6 +107,8 @@ namespace HelloOpenCvSharp
                     // 转换鼠标点击位置为屏幕坐标
                     System.Drawing.Point screenPoint = pictureBox1.PointToScreen(e.Location);
 
+                    //HZH_Controls.Controls.UCTextBoxEx
+
                     // 创建并显示 AnnotationForm
                     using (AnnotationForm annotationForm = new AnnotationForm())
                     {
@@ -164,9 +166,4 @@ namespace HelloOpenCvSharp
         }
     }
 
-    class Annotation
-    {
-        public Rectangle Rect { get; set; }
-        public int Id { get; set; }
-    }
 }

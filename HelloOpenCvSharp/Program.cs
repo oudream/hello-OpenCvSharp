@@ -16,7 +16,7 @@ namespace HelloOpenCvSharp
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new MouseDrawRectangleForm3());
+            Application.Run(new MouseDrawRectangleForm5());
         }
     }
 }

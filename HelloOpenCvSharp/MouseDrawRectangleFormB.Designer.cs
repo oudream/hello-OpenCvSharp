@@ -1,6 +1,6 @@
 ﻿namespace HelloOpenCvSharp
 {
-    partial class MouseDrawRectangleForm
+    partial class MouseDrawRectangleFormB
     {
         /// <summary>
         /// Required designer variable.
@@ -30,13 +30,13 @@
         {
             this.SuspendLayout();
             // 
-            // MouseDrawRectangleForm
+            // MouseDrawRectangleFormB
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(9F, 18F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(1009, 759);
-            this.Name = "MouseDrawRectangleForm";
-            this.Text = "MouseDrawRectangleForm";
+            this.ClientSize = new System.Drawing.Size(1081, 809);
+            this.Name = "MouseDrawRectangleFormB";
+            this.Text = "MouseDrawRectangleFormB";
             this.ResumeLayout(false);
 
         }
