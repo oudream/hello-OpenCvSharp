@@ -12,9 +12,9 @@ namespace HelloOpenCvSharp
 {
     public partial class MouseDrawRectangleFormB : Form
     {
-        private bool _isDrawing, _isResizing, _isMoving;
-        private Rectangle _rect;
-        private Point _startPoint, _lastLocation;
+        private bool _isAnnotationDrawing, _isAnnotationResizing, _isAnnotationMoving;
+        private Rectangle _annotationRect;
+        private Point _annotationStartPoint, _annotationLastLocation;
 
         public MouseDrawRectangleFormB()
         {
@@ -33,40 +33,40 @@ namespace HelloOpenCvSharp
         {
             if (IsMouseInResizeZone(e.Location))
             {
-                _isResizing = true;
-                _startPoint = e.Location;
+                _isAnnotationResizing = true;
+                _annotationStartPoint = e.Location;
             }
             else if (IsMouseInMoveZone(e.Location))
             {
-                _isMoving = true;
-                _lastLocation = e.Location;
+                _isAnnotationMoving = true;
+                _annotationLastLocation = e.Location;
             }
             else
             {
-                _isDrawing = true;
-                _startPoint = e.Location;
-                _rect = new Rectangle(e.Location, new Size());
+                _isAnnotationDrawing = true;
+                _annotationStartPoint = e.Location;
+                _annotationRect = new Rectangle(e.Location, new Size());
             }
         }
 
         private void Panel1_MouseMove(object sender, MouseEventArgs e)
         {
-            if (_isDrawing)
+            if (_isAnnotationDrawing)
             {
-                _rect.Size = new Size(e.X - _startPoint.X, e.Y - _startPoint.Y);
+                _annotationRect.Size = new Size(e.X - _annotationStartPoint.X, e.Y - _annotationStartPoint.Y);
                 this.panel1.Invalidate();
             }
-            else if (_isResizing)
+            else if (_isAnnotationResizing)
             {
-                _rect.Size = new Size(e.X - _rect.Left, e.Y - _rect.Top);
+                _annotationRect.Size = new Size(e.X - _annotationRect.Left, e.Y - _annotationRect.Top);
                 this.panel1.Invalidate();
             }
-            else if (_isMoving)
+            else if (_isAnnotationMoving)
             {
-                int dx = e.X - _lastLocation.X;
-                int dy = e.Y - _lastLocation.Y;
-                _rect = new Rectangle(_rect.X + dx, _rect.Y + dy, _rect.Width, _rect.Height);
-                _lastLocation = e.Location;
+                int dx = e.X - _annotationLastLocation.X;
+                int dy = e.Y - _annotationLastLocation.Y;
+                _annotationRect = new Rectangle(_annotationRect.X + dx, _annotationRect.Y + dy, _annotationRect.Width, _annotationRect.Height);
+                _annotationLastLocation = e.Location;
                 this.panel1.Invalidate();
             }
             else
@@ -88,26 +88,26 @@ namespace HelloOpenCvSharp
 
         private void Panel1_MouseUp(object sender, MouseEventArgs e)
         {
-            _isDrawing = _isMoving = _isResizing = false;
+            _isAnnotationDrawing = _isAnnotationMoving = _isAnnotationResizing = false;
         }
 
         private void Panel1_Paint(object sender, PaintEventArgs e)
         {
-            if (_rect.Width > 0 && _rect.Height > 0)
+            if (_annotationRect.Width > 0 && _annotationRect.Height > 0)
             {
-                e.Graphics.DrawRectangle(Pens.Black, _rect);
+                e.Graphics.DrawRectangle(Pens.Black, _annotationRect);
             }
         }
 
         private bool IsMouseInResizeZone(Point location)
         {
-            Rectangle resizeZone = new Rectangle(_rect.Right - 10, _rect.Bottom - 10, 10, 10);
+            Rectangle resizeZone = new Rectangle(_annotationRect.Right - 10, _annotationRect.Bottom - 10, 10, 10);
             return resizeZone.Contains(location);
         }
 
         private bool IsMouseInMoveZone(Point location)
         {
-            Rectangle moveZone = new Rectangle(_rect.Left, _rect.Top, 10, 10);
+            Rectangle moveZone = new Rectangle(_annotationRect.Left, _annotationRect.Top, 10, 10);
             return moveZone.Contains(location);
         }
 

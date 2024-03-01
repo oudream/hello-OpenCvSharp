@@ -22,29 +22,30 @@ namespace HelloOpenCvSharp
             SelectGrayscale
         }
 
-        private PictureBox pictureBox1;
+        private PictureBox _pictureBox;
 
-        private bool isAnnotating;
-        private Rectangle annotationRect;
-        private System.Drawing.Point annotationStartPoint;
-        private Mat originalImage; // 原始图像
-        private Mat currentImage; // 当前图像
-        private Bitmap displayImage; // 显示图像
+        private bool _isAnnotating;
+        private Rectangle _annotationRect;
+        private System.Drawing.Point _annotationStartPoint;
+        private Mat _originalImage; // 原始图像
+        private Mat _currentImage; // 当前图像
+        private Bitmap _displayImage; // 显示图像
 
         // 标注列表
-        private List<Annotation> annotations = new List<Annotation>();
+        private List<Annotation> _annotations = new List<Annotation>();
 
         // 高亮的矩形框
-        private Annotation highlightedAnnotation = null;
+        private Annotation _highlightedAnnotation = null;
 
         // 当前模式
-        private OperationMode currentMode = OperationMode.None;
+        private OperationMode _currentMode = OperationMode.None;
 
-        private System.Drawing.Point mouseDownPoint = new System.Drawing.Point(); // 记录拖拽过程鼠标位置
-        private bool isMoving = false;    // 判断鼠标在picturebox上移动时，是否处于拖拽过程(鼠标左键是否按下)
-        private double zoomStep = 0.15d;      // 缩放步长
+        // 拖动、放大、缩小
+        private System.Drawing.Point _mouseDownPoint = new System.Drawing.Point(); // 记录拖拽过程鼠标位置
+        private bool _isMoving = false;    // 判断鼠标在picturebox上移动时，是否处于拖拽过程(鼠标左键是否按下)
+        private double _zoomStep = 0.15d;      // 缩放步长
 
-        // S7驱动模板状态变更事件
+        // 父控件需要触发变更事件
         public event EventHandler ParentInvalidate;
         protected virtual void OnParentInvalidate(EventArgs e)
         {
@@ -52,33 +53,33 @@ namespace HelloOpenCvSharp
             ParentInvalidate?.Invoke(this, e);
         }
 
-        private string theLabel;
-
+        // 标注的标签
+        private string _annotationLabel;
 
         public ImageProcessingControl(PictureBox pictureBox, string label)
         {
-            pictureBox1 = pictureBox;
-            pictureBox1.MouseDown += pictureBox_MouseDown;
-            pictureBox1.MouseMove += pictureBox_MouseMove;
-            pictureBox1.MouseUp += pictureBox_MouseUp;
-            pictureBox1.Paint += pictureBox_Paint;
-            pictureBox1.MouseWheel += pictureBox1_MouseWheel;
+            _pictureBox = pictureBox;
+            _pictureBox.MouseDown += pictureBox_MouseDown;
+            _pictureBox.MouseMove += pictureBox_MouseMove;
+            _pictureBox.MouseUp += pictureBox_MouseUp;
+            _pictureBox.Paint += pictureBox_Paint;
+            _pictureBox.MouseWheel += pictureBox1_MouseWheel;
 
-            theLabel = label;
+            _annotationLabel = label;
         }
        
         ~ImageProcessingControl()
         {
             // 释放
-            pictureBox1.MouseDown -= pictureBox_MouseDown;
-            pictureBox1.MouseMove -= pictureBox_MouseMove;
-            pictureBox1.MouseUp -= pictureBox_MouseUp;
-            pictureBox1.Paint -= pictureBox_Paint;
-            pictureBox1.MouseWheel -= pictureBox1_MouseWheel;
+            _pictureBox.MouseDown -= pictureBox_MouseDown;
+            _pictureBox.MouseMove -= pictureBox_MouseMove;
+            _pictureBox.MouseUp -= pictureBox_MouseUp;
+            _pictureBox.Paint -= pictureBox_Paint;
+            _pictureBox.MouseWheel -= pictureBox1_MouseWheel;
 
             // 释放资源
-            originalImage?.Dispose();
-            currentImage?.Dispose();
+            _originalImage?.Dispose();
+            _currentImage?.Dispose();
         }
 
         public void OpenImage(string filename)
@@ -86,45 +87,45 @@ namespace HelloOpenCvSharp
             // 使用OpenCvSharp加载和处理图像
             Mat imageOrg = Cv2.ImRead(filename, ImreadModes.Unchanged);
             // 对图像进行归一化处理，MinMax相当于把窗宽窗位拉满
-            originalImage?.Dispose();
-            originalImage = new Mat();
-            Cv2.Normalize(imageOrg, originalImage, 0, 255, NormTypes.MinMax, MatType.CV_8UC1);
+            _originalImage?.Dispose();
+            _originalImage = new Mat();
+            Cv2.Normalize(imageOrg, _originalImage, 0, 255, NormTypes.MinMax, MatType.CV_8UC1);
             // 从原始图像复制
-            currentImage?.Dispose();
-            currentImage = CloneOriginal();
+            _currentImage?.Dispose();
+            _currentImage = CloneOriginal();
 
             //
-            displayImage = OpenCvSharp.Extensions.BitmapConverter.ToBitmap(currentImage);
+            _displayImage = OpenCvSharp.Extensions.BitmapConverter.ToBitmap(_currentImage);
 
-            pictureBox1.Image = displayImage;
-            pictureBox1.SizeMode = PictureBoxSizeMode.Zoom; //设置picturebox为缩放模式
-            pictureBox1.Width = displayImage.Width;
-            pictureBox1.Height = displayImage.Height;
+            _pictureBox.Image = _displayImage;
+            _pictureBox.SizeMode = PictureBoxSizeMode.Zoom; //设置picturebox为缩放模式
+            _pictureBox.Width = _displayImage.Width;
+            _pictureBox.Height = _displayImage.Height;
 
             // 清除标注
-            annotations.Clear();
+            _annotations.Clear();
         }
         public void SetNearestNeighbor(bool value)
         {
             NearestNeighborMode = value;
-            pictureBox1.Invalidate();
+            _pictureBox.Invalidate();
         }
 
         public void SetCurrentMode(OperationMode mode)
         {
             // 如果当前模式已经是被点击的模式，则重置为None
-            currentMode = mode;
-            pictureBox1.Invalidate();
+            _currentMode = mode;
+            _pictureBox.Invalidate();
         }
-        public OperationMode GetCurrentMode() => currentMode;
+        public OperationMode GetCurrentMode() => _currentMode;
 
-
+        public void SetLabel(string label) => _annotationLabel = label;
 
         #region 鼠标事件
         private System.Drawing.Point currentMousePosition;
         private void pictureBox_MouseDown(object sender, MouseEventArgs e)
         {
-            switch (currentMode)
+            switch (_currentMode)
             {
                 case OperationMode.DrawAnnotation:
                     StartDrawingAnnotation(sender, e);
@@ -138,10 +139,10 @@ namespace HelloOpenCvSharp
                 default:
                     if (e.Button == MouseButtons.Left)
                     {
-                        mouseDownPoint.X = Cursor.Position.X;
-                        mouseDownPoint.Y = Cursor.Position.Y;
-                        isMoving = true;
-                        pictureBox1.Focus();
+                        _mouseDownPoint.X = Cursor.Position.X;
+                        _mouseDownPoint.Y = Cursor.Position.Y;
+                        _isMoving = true;
+                        _pictureBox.Focus();
                     }
                     break;
             }
@@ -149,12 +150,12 @@ namespace HelloOpenCvSharp
 
         private void pictureBox_MouseMove(object sender, MouseEventArgs e)
         {
-            switch (currentMode)
+            switch (_currentMode)
             {
                 case OperationMode.DrawAnnotation:
                     currentMousePosition = e.Location;
                     ContinueDrawingAnnotation(sender, e);
-                    pictureBox1.Invalidate(); // 仅触发PictureBox的重绘
+                    _pictureBox.Invalidate(); // 仅触发PictureBox的重绘
                     break;
                 case OperationMode.DrawDistanceLine:
                     ContinueDrawingDistanceLine(sender, e);
@@ -167,20 +168,20 @@ namespace HelloOpenCvSharp
                     currentMousePosition.X = 0;
                     currentMousePosition.Y = 0;
                     // 移动
-                    pictureBox1.Focus();
-                    if (isMoving)
+                    _pictureBox.Focus();
+                    if (_isMoving)
                     {
                         int x, y;
                         int moveX, moveY;
-                        moveX = Cursor.Position.X - mouseDownPoint.X;
-                        moveY = Cursor.Position.Y - mouseDownPoint.Y;
-                        x = pictureBox1.Location.X + moveX;
-                        y = pictureBox1.Location.Y + moveY;
-                        pictureBox1.Location = new System.Drawing.Point(x, y);
-                        mouseDownPoint.X = Cursor.Position.X;
-                        mouseDownPoint.Y = Cursor.Position.Y;
+                        moveX = Cursor.Position.X - _mouseDownPoint.X;
+                        moveY = Cursor.Position.Y - _mouseDownPoint.Y;
+                        x = _pictureBox.Location.X + moveX;
+                        y = _pictureBox.Location.Y + moveY;
+                        _pictureBox.Location = new System.Drawing.Point(x, y);
+                        _mouseDownPoint.X = Cursor.Position.X;
+                        _mouseDownPoint.Y = Cursor.Position.Y;
 
-                        pictureBox1.Invalidate(); // 触发重绘
+                        _pictureBox.Invalidate(); // 触发重绘
                         OnParentInvalidate(EventArgs.Empty);
                     }
                     break;
@@ -190,7 +191,7 @@ namespace HelloOpenCvSharp
 
         private void pictureBox_MouseUp(object sender, MouseEventArgs e)
         {
-            switch (currentMode)
+            switch (_currentMode)
             {
                 case OperationMode.DrawAnnotation:
                     FinishDrawingAnnotation(sender, e);
@@ -204,7 +205,7 @@ namespace HelloOpenCvSharp
                 default:
                     if (e.Button == MouseButtons.Left)
                     {
-                        isMoving = false;
+                        _isMoving = false;
                     }
                     break;
             }
@@ -215,51 +216,51 @@ namespace HelloOpenCvSharp
         {
             int x = e.Location.X;
             int y = e.Location.Y;
-            int ow = pictureBox1.Width;
-            int oh = pictureBox1.Height;
+            int ow = _pictureBox.Width;
+            int oh = _pictureBox.Height;
             int VX, VY;
-            var zoomFactor = pictureBox1.Width / (double)currentImage.Width;
-            int zoomWidth = (int)(currentImage.Width * zoomStep * zoomFactor);
-            int zoomHeight = (int)(currentImage.Height * zoomStep * zoomFactor);
+            var zoomFactor = _pictureBox.Width / (double)_currentImage.Width;
+            int zoomWidth = (int)(_currentImage.Width * _zoomStep * zoomFactor);
+            int zoomHeight = (int)(_currentImage.Height * _zoomStep * zoomFactor);
 
             if (e.Delta > 0)
             {
                 // 限制放大范围到7
-                if (pictureBox1.Width > 19000 || pictureBox1.Height > 19000)
+                if (_pictureBox.Width > 19000 || _pictureBox.Height > 19000)
                     return;
-                pictureBox1.Width += zoomWidth;
-                pictureBox1.Height += zoomHeight;
+                _pictureBox.Width += zoomWidth;
+                _pictureBox.Height += zoomHeight;
 
-                PropertyInfo pInfo = pictureBox1.GetType().GetProperty("ImageRectangle", BindingFlags.Instance |
+                PropertyInfo pInfo = _pictureBox.GetType().GetProperty("ImageRectangle", BindingFlags.Instance |
                     BindingFlags.NonPublic);
-                Rectangle rect = (Rectangle)pInfo.GetValue(pictureBox1, null);
+                Rectangle rect = (Rectangle)pInfo.GetValue(_pictureBox, null);
 
-                pictureBox1.Width = rect.Width;
-                pictureBox1.Height = rect.Height;
+                _pictureBox.Width = rect.Width;
+                _pictureBox.Height = rect.Height;
             }
             if (e.Delta < 0)
             {
                 // 限制缩小范围到0.2
-                if (pictureBox1.Width < 400 || pictureBox1.Height < 400)
+                if (_pictureBox.Width < 400 || _pictureBox.Height < 400)
                     return;
 
-                pictureBox1.Width -= zoomWidth;
-                pictureBox1.Height -= zoomHeight;
-                PropertyInfo pInfo = pictureBox1.GetType().GetProperty("ImageRectangle", BindingFlags.Instance |
+                _pictureBox.Width -= zoomWidth;
+                _pictureBox.Height -= zoomHeight;
+                PropertyInfo pInfo = _pictureBox.GetType().GetProperty("ImageRectangle", BindingFlags.Instance |
                     BindingFlags.NonPublic);
-                Rectangle rect = (Rectangle)pInfo.GetValue(pictureBox1, null);
-                pictureBox1.Width = rect.Width;
-                pictureBox1.Height = rect.Height;
+                Rectangle rect = (Rectangle)pInfo.GetValue(_pictureBox, null);
+                _pictureBox.Width = rect.Width;
+                _pictureBox.Height = rect.Height;
             }
 
-            VX = (int)((double)x * (ow - pictureBox1.Width) / ow);
-            VY = (int)((double)y * (oh - pictureBox1.Height) / oh);
-            pictureBox1.Location = new System.Drawing.Point(pictureBox1.Location.X + VX, pictureBox1.Location.Y + VY);
+            VX = (int)((double)x * (ow - _pictureBox.Width) / ow);
+            VY = (int)((double)y * (oh - _pictureBox.Height) / oh);
+            _pictureBox.Location = new System.Drawing.Point(_pictureBox.Location.X + VX, _pictureBox.Location.Y + VY);
 
             //showInfo($"pictureBox1.Width: {pictureBox1.Width}  ==>  CurrentImage.Width: {currentImage.Width}  ==>  zoomFactor: {pictureBox1.Width / (double)currentImage.Width}");
             //showInfo($"pictureBox1.Height: {pictureBox1.Height}  ==>  CurrentImage.Height: {currentImage.Height}");
             //showInfo($"pictrueBox1.Location: {pictureBox1.Location} ");
-            pictureBox1.Invalidate(); // 触发重绘
+            _pictureBox.Invalidate(); // 触发重绘
             OnParentInvalidate(EventArgs.Empty);
         }
 
@@ -273,7 +274,7 @@ namespace HelloOpenCvSharp
         private void pictureBox_Paint(object sender, PaintEventArgs e)
         {
             // 绘制图像模式为最近邻插值
-            if (pictureBox1.Image != null)
+            if (_pictureBox.Image != null)
             {
                 if (NearestNeighborMode)
                 {
@@ -281,24 +282,37 @@ namespace HelloOpenCvSharp
                     e.Graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.NearestNeighbor;
 
                     // 创建图像绘制的目标矩形，当前图像窗口的矩形
-                    Rectangle destRect = new Rectangle(0, 0, pictureBox1.Width, pictureBox1.Height);
+                    Rectangle destRect = new Rectangle(0, 0, _pictureBox.Width, _pictureBox.Height);
 
                     // 绘制图像
-                    e.Graphics.DrawImage(pictureBox1.Image, destRect);
+                    e.Graphics.DrawImage(_pictureBox.Image, destRect);
+                }
+
+                //var zoomFactor = pictureBox1.Width / (float)currentImage.Width;
+                //e.Graphics.ScaleTransform(zoomFactor, zoomFactor);
+
+                // 绘制所有矩形框
+                foreach (var annotation in _annotations)
+                {
+                    // 转换为pictureBox的坐标
+                    //var rect = ToPictureBoxAnnotationRect(annotation);
+                    //e.Graphics.DrawRectangle(Pens.Red, rect);
+                    //DrawAnnotation(currentImage, annotation);
+                    DrawAnnotation(e.Graphics, annotation);
                 }
             }
 
             // 当前模式为标注模式
-            if (currentMode == OperationMode.DrawAnnotation)
+            if (_currentMode == OperationMode.DrawAnnotation)
             {
                 // 绘制所有矩形框
-                foreach (var annotation in annotations)
+                foreach (var annotation in _annotations)
                 {
                     // 如果是高亮的矩形框，则使用不同的颜色
-                    if (annotation == highlightedAnnotation)
+                    if (annotation == _highlightedAnnotation)
                     {
                         // 转换为pictureBox的坐标
-                        var rect = ToPictureBoxAnnotationRect(annotation.Rect);
+                        var rect = ToPictureBoxAnnotationRect(annotation);
                         e.Graphics.DrawRectangle(Pens.LimeGreen, rect);
                     }
                 }
@@ -310,29 +324,29 @@ namespace HelloOpenCvSharp
                     var y = currentMousePosition.Y;
                     var g = e.Graphics;
                     var pen = new Pen(Color.Yellow, 1); // 选择颜色和线宽
-                    g.DrawLine(pen, new System.Drawing.Point(x, 0), new System.Drawing.Point(x, pictureBox1.Height)); // 竖线
-                    g.DrawLine(pen, new System.Drawing.Point(0, y), new System.Drawing.Point(pictureBox1.Width, y)); // 横线
+                    g.DrawLine(pen, new System.Drawing.Point(x, 0), new System.Drawing.Point(x, _pictureBox.Height)); // 竖线
+                    g.DrawLine(pen, new System.Drawing.Point(0, y), new System.Drawing.Point(_pictureBox.Width, y)); // 横线
                 }
             }
 
             // 仅在正在标注时绘制矩形框
-            if (isAnnotating && annotationRect.Width > 0 && annotationRect.Height > 0)
+            if (_isAnnotating && _annotationRect.Width > 0 && _annotationRect.Height > 0)
             {
-                e.Graphics.DrawRectangle(Pens.Red, annotationRect);
+                e.Graphics.DrawRectangle(Pens.Red, _annotationRect);
             }
         }
 
         private Mat CloneOriginal()
         {
-            if (originalImage.Channels() == 1)
+            if (_originalImage.Channels() == 1)
             {
                 var image = new Mat();
-                Cv2.CvtColor(originalImage, image, ColorConversionCodes.GRAY2BGR);
+                Cv2.CvtColor(_originalImage, image, ColorConversionCodes.GRAY2BGR);
                 return image;
             }
             else
             {
-                return originalImage.Clone();
+                return _originalImage.Clone();
             }
         }
 
@@ -342,18 +356,18 @@ namespace HelloOpenCvSharp
             if (e.Button == MouseButtons.Left)
             {
                 /* 实现开始绘制标注的逻辑 */
-                isAnnotating = true;
-                annotationStartPoint = e.Location;
-                annotationRect = new Rectangle(e.Location, new System.Drawing.Size());
+                _isAnnotating = true;
+                _annotationStartPoint = e.Location;
+                _annotationRect = new Rectangle(e.Location, new System.Drawing.Size());
             }
         }
         void ContinueDrawingAnnotation(object sender, MouseEventArgs e)
         {
             /* 实现继续绘制标注的逻辑 */
-            if (isAnnotating)
+            if (_isAnnotating)
             {
-                annotationRect.Width = e.X - annotationStartPoint.X;
-                annotationRect.Height = e.Y - annotationStartPoint.Y;
+                _annotationRect.Width = e.X - _annotationStartPoint.X;
+                _annotationRect.Height = e.Y - _annotationStartPoint.Y;
                 //pictureBox1.Invalidate(); // 仅触发PictureBox的重绘
                 // showInfo($"annotationRect: {annotationRect}");
             }
@@ -361,8 +375,8 @@ namespace HelloOpenCvSharp
             {
                 // 转换成原图像坐标点
                 var mousePoint = ToOrgAnnotationPoint(e.Location);
-                var previousHighlighted = highlightedAnnotation;
-                highlightedAnnotation = annotations.FirstOrDefault(ann => ann.Rect.Contains(mousePoint));
+                var previousHighlighted = _highlightedAnnotation;
+                _highlightedAnnotation = _annotations.FirstOrDefault(ann => ann.Rect.Contains(mousePoint));
                 //if (highlightedAnnotation != previousHighlighted)
                 //{
                 //    pictureBox1.Invalidate(); // 如果高亮的矩形框发生变化，则需要重绘
@@ -372,29 +386,30 @@ namespace HelloOpenCvSharp
         void FinishDrawingAnnotation(object sender, MouseEventArgs e)
         {
             /* 实现完成绘制标注的逻辑 */
-            if (isAnnotating)
+            if (_isAnnotating)
             {
-                isAnnotating = false;
+                _isAnnotating = false;
 
                 // 添加标注
                 {
-                    if (annotationRect.Width < 5 || annotationRect.Height < 5)
+                    if (_annotationRect.Width < 5 || _annotationRect.Height < 5)
                         return;
                     // 转换成原图像坐标矩形
-                    var rect = ToOrgAnnotationRect(annotationRect);
-                    var annotation = new Annotation { Rect = rect, Id = AssignAnnotationId(), Label = theLabel };
-                    annotations.Add(annotation);
+                    var annotation = CreateOrgAnnotation(_annotationRect);
+                    annotation.Id = AssignAnnotationId();
+                    annotation.Label = _annotationLabel;
+                    _annotations.Add(annotation);
                     // 在原始图像上绘制最终的矩形框
-                    DrawAnnotation(currentImage, annotation);
+                    //DrawAnnotation(currentImage, annotation);
                 }
 
                 {
                     // 更新显示
                     {
-                        displayImage?.Dispose(); // Dispose previous Bitmap
-                        displayImage = BitmapConverter.ToBitmap(currentImage);
-                        pictureBox1.Image = displayImage;
-                        pictureBox1.Invalidate(); // 更新视图
+                        _displayImage?.Dispose(); // Dispose previous Bitmap
+                        _displayImage = BitmapConverter.ToBitmap(_currentImage);
+                        _pictureBox.Image = _displayImage;
+                        _pictureBox.Invalidate(); // 更新视图
                     }
                 }
 
@@ -406,25 +421,25 @@ namespace HelloOpenCvSharp
                 {
                     // 转换成原图像坐标点
                     var mousePoint = ToOrgAnnotationPoint(e.Location);
-                    var deletedAnnotation = annotations.FirstOrDefault(ann => ann.Rect.Contains(mousePoint));
+                    var deletedAnnotation = _annotations.FirstOrDefault(ann => ann.Rect.Contains(mousePoint));
                     if (deletedAnnotation != null)
                     {
-                        annotations.Remove(deletedAnnotation);
+                        _annotations.Remove(deletedAnnotation);
                         // 剩下的矩形框重新绘制
                         // 从原始图像复制
-                        currentImage?.Dispose();
-                        currentImage = CloneOriginal();
-                        foreach (var annotation in annotations)
+                        _currentImage?.Dispose();
+                        _currentImage = CloneOriginal();
+                        foreach (var annotation in _annotations)
                         {
-                            DrawAnnotation(currentImage, annotation);
+                            //DrawAnnotation(currentImage, annotation);
                         }
 
                         // 更新显示
                         {
-                            displayImage?.Dispose(); // Dispose previous Bitmap
-                            displayImage = BitmapConverter.ToBitmap(currentImage);
-                            pictureBox1.Image = displayImage;
-                            pictureBox1.Invalidate(); // 更新视图
+                            _displayImage?.Dispose(); // Dispose previous Bitmap
+                            _displayImage = BitmapConverter.ToBitmap(_currentImage);
+                            _pictureBox.Image = _displayImage;
+                            _pictureBox.Invalidate(); // 更新视图
                         }
                     }
                 }
@@ -434,52 +449,72 @@ namespace HelloOpenCvSharp
         int AssignAnnotationId()
         {
             // 检查 annotations.Count 内顺序号都有没有被占用，没有则返回
-            for (int i = 0; i < annotations.Count; i++)
+            for (int i = 0; i < _annotations.Count; i++)
             {
                 // i 在 annotations 中没有被占用
-                if (!annotations.Any(ann => ann.Id == i))
+                if (!_annotations.Any(ann => ann.Id == i))
                 {
                     return i;
                 }
             }
-            return annotations.Count;
+            return _annotations.Count;
         }
         // 在图像上绘制最终的矩形框
         void DrawAnnotation(Mat image, Annotation annotation)
         {
             // 绘制矩形框
             Cv2.Rectangle(image,
-                          new OpenCvSharp.Point(annotation.Rect.Left, annotation.Rect.Top),
-                          new OpenCvSharp.Point(annotation.Rect.Right, annotation.Rect.Bottom),
+                          new OpenCvSharp.Point(annotation.GetLeft(), annotation.GetTop()),
+                          new OpenCvSharp.Point(annotation.GetRight(), annotation.GetBottom()),
                           Scalar.Red, 2);
             // 绘制文本
             // 注意：我们需要将 System.Drawing.Point 转换为 OpenCvSharp.Point
             Cv2.PutText(image,
                         $"{annotation.Id} {annotation.Label}",
-                        new OpenCvSharp.Point(annotation.Rect.Left, annotation.Rect.Top - 10),
+                        new OpenCvSharp.Point(annotation.GetLeft(), annotation.GetTop() - 10),
                         HersheyFonts.HersheySimplex, 0.5, Scalar.Blue, thickness: 1);
+        }
+        // 在图像上绘制最终的矩形框
+        void DrawAnnotation(Graphics graphics, Annotation annotation)
+        {
+            // 绘制矩形框
+            var rect = ToPictureBoxAnnotationRect(annotation);
+            graphics.DrawRectangle(Pens.Red, rect);
+
+            var zoomFactor = _pictureBox.Width / (double)_currentImage.Width;
+
+            // 绘制文本
+            // 注意：我们需要将 System.Drawing.Point 转换为 OpenCvSharp.Point
+            // 创建字体和画刷
+            using (Font font = new Font("Arial", (int)(zoomFactor * 9))) // 字体大小也会相应缩放
+            using (Brush brush = new SolidBrush(Color.Red))
+            {
+                // 设置文本的原始位置
+                PointF point = new PointF(rect.Left, rect.Top - (int)(zoomFactor * 16));
+
+                // 绘制文本
+                graphics.DrawString($"{annotation.Id} {annotation.Label}", font, brush, point);
+            }
         }
         // 转换成原图像坐标矩形
         // rect 为相对于pictureBox的坐标
-        Rectangle ToOrgAnnotationRect(Rectangle rect)
+        Annotation CreateOrgAnnotation(Rectangle rect)
         {
-            var zoomFactor = pictureBox1.Width / (double)currentImage.Width;
-            var location = new System.Drawing.Point((int)(rect.X / zoomFactor), (int)(rect.Y / zoomFactor));
-            var size = new System.Drawing.Size((int)(rect.Width / zoomFactor), (int)(rect.Height / zoomFactor));
-            return new Rectangle(location, size);
+            var zoomFactor = _pictureBox.Width / (double)_currentImage.Width;
+            return new Annotation(rect.X / zoomFactor, rect.Y / zoomFactor, rect.Width / zoomFactor, rect.Height / zoomFactor);
         }
         // point 为相对于pictureBox的坐标
         System.Drawing.Point ToOrgAnnotationPoint(System.Drawing.Point point)
         {
-            var zoomFactor = pictureBox1.Width / (double)currentImage.Width;
+            var zoomFactor = _pictureBox.Width / (double)_currentImage.Width;
             return new System.Drawing.Point((int)(point.X / zoomFactor), (int)(point.Y / zoomFactor));
         }
         // rect 为原图像坐标
-        Rectangle ToPictureBoxAnnotationRect(Rectangle rect)
+        Rectangle ToPictureBoxAnnotationRect(Annotation annotation)
         {
-            var zoomFactor = pictureBox1.Width / (double)currentImage.Width;
-            var location = new System.Drawing.Point((int)(rect.X * zoomFactor), (int)(rect.Y * zoomFactor));
-            var size = new System.Drawing.Size((int)(rect.Width * zoomFactor), (int)(rect.Height * zoomFactor));
+            var zoomFactor = _pictureBox.Width / (double)_currentImage.Width;
+            var location = new System.Drawing.Point((int)(annotation.X * zoomFactor), (int)(annotation.Y * zoomFactor));
+            var size = new System.Drawing.Size((int)(annotation.Width * zoomFactor), (int)(annotation.Height * zoomFactor));
             return new Rectangle(location, size);
         }
         #endregion
@@ -585,8 +620,37 @@ namespace HelloOpenCvSharp
 
     class Annotation
     {
-        public Rectangle Rect { get; set; }
+        public double X;
+
+        public double Y;
+
+        public double Width;
+
+        public double Height;
+
         public int Id { get; set; }
+        
         public string Label { get; set; }
+        
+        public Annotation(double x, double y, double width, double height)
+        {
+            X = x; Y = y; Width = width; Height = height;
+            Rect = new Rectangle(Round(X), Round(Y), Round(Width), Round(Height));
+        }
+        public Rectangle Rect { get; private set; }
+
+        public int GetX() => Round(X);
+        public int GetY() => Round(Y);
+        public int GetWidth() => Round(Width);
+        public int GetHeight() => Round(Height);
+        public int GetLeft() => Round(X);
+        public int GetTop() => Round(Y);
+        public int GetRight() => Round(X + Width);
+        public int GetBottom() => Round(Y + Height);
+
+        private int Round(double d)
+        {
+            return (int) Math.Round(d, MidpointRounding.AwayFromZero);
+        }
     }
 }
