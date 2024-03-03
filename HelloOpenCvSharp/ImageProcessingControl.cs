@@ -9,6 +9,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Runtime.InteropServices;
+using System.IO;
 
 namespace HelloOpenCvSharp
 {
@@ -85,11 +86,25 @@ namespace HelloOpenCvSharp
         public void OpenImage(string filename)
         {
             // 使用OpenCvSharp加载和处理图像
-            Mat imageOrg = Cv2.ImRead(filename, ImreadModes.Unchanged);
+            try
+            {
+                Mat imageOrg = Cv2.ImRead(filename, ImreadModes.Unchanged);
+                OpenImage(imageOrg);
+            }
+            catch (Exception ex)
+            {
+
+                throw;
+            }
+        }
+        public void OpenImage(Mat image)
+        {
+            // 打印图像通道数、位深度、数据类型、行列
+            //Console.WriteLine($"通道数:{imageOrg.Channels()} 位深度:{imageOrg.Depth()} 数据类型:{imageOrg.Type()} 行列:{imageOrg.Rows} x {imageOrg.Cols}");
             // 对图像进行归一化处理，MinMax相当于把窗宽窗位拉满
             _originalImage?.Dispose();
             _originalImage = new Mat();
-            Cv2.Normalize(imageOrg, _originalImage, 0, 255, NormTypes.MinMax, MatType.CV_8UC1);
+            Cv2.Normalize(image, _originalImage, 0, 255, NormTypes.MinMax, MatType.CV_8UC1);
             // 从原始图像复制
             _currentImage?.Dispose();
             _currentImage = CloneOriginal();
@@ -385,7 +400,7 @@ namespace HelloOpenCvSharp
             var mousePoint = ToOrgAnnotationPoint(location);
             foreach (var annotation in _annotations)
             {
-                Rectangle resizeZone = new Rectangle(annotation.GetRight() - 10, annotation.GetBottom() - 10, 10, 10);
+                Rectangle resizeZone = new Rectangle(annotation.GetRight() - 10, annotation.GetBottom() - 10, 20, 20);
                 if (resizeZone.Contains(mousePoint))
                 {
                     // 如果找到，返回当前的调整区域矩形
@@ -399,7 +414,7 @@ namespace HelloOpenCvSharp
             var mousePoint = ToOrgAnnotationPoint(location);
             foreach (var annotation in _annotations)
             {
-                Rectangle moveZone = new Rectangle(annotation.GetLeft(), annotation.GetTop(), 10, 10);
+                Rectangle moveZone = new Rectangle(annotation.GetLeft() - 10, annotation.GetTop() - 10, 20, 20);
                 if (moveZone.Contains(mousePoint))
                 {
                     // 如果找到，返回当前的调整区域矩形
@@ -634,6 +649,82 @@ namespace HelloOpenCvSharp
             Mat imageMat2 = Mat.FromImageData(managedArray, ImreadModes.Grayscale);
         }
 
+        public void SaveAnnotations()
+        {
+            // 保存标注
+            // 检查标注是否为空，如果为空，则弹出警告
+            if (_annotations.Count == 0)
+            {
+                MessageBox.Show("标注为空");
+                return;
+            }
+            // 检查图像是否为空，如果为空，则弹出警告
+            if (_originalImage == null)
+            {
+                MessageBox.Show("图像为空");
+                return;
+            }
+            // 弹出保存对话框，保存类型为".tif"、".png"
+            SaveFileDialog saveFileDialog = new SaveFileDialog();
+            saveFileDialog.Filter = "Tiff文件|*.tif|png文件|*.png";
+            if (saveFileDialog.ShowDialog() == DialogResult.OK)
+            {
+                // 保存标注
+                string filePath = saveFileDialog.FileName;
+                // 检查文件扩展名、如果不是.tif或.png，则弹出警告
+                if (Path.GetExtension(filePath) != ".tif" && Path.GetExtension(filePath) != ".png")
+                {
+                    MessageBox.Show("只能保存为.tif或.png文件");
+                    return;
+                }
+                // 检查文件是否已经存在，如果存在，则弹出警告
+                if (File.Exists(filePath))
+                {
+                    MessageBox.Show("文件已经存在");
+                    return;
+                }
+                // 保存标注
+                ImageProcessingJson.SaveImageAnnotation(_annotations, _originalImage, filePath);
+            }
+        }
+
+        public void LoadAnnotations()
+        {
+            // 加载标注
+            // 弹出加载对话框，加载类型为".json"
+            OpenFileDialog openFileDialog = new OpenFileDialog();
+            openFileDialog.Filter = "JSON文件|*.json";
+            if (openFileDialog.ShowDialog() == DialogResult.OK)
+            {
+                // 加载标注
+                string filePath = openFileDialog.FileName;
+                // 检查文件是否不存在，如果存在，则弹出警告
+                if (!File.Exists(filePath))
+                {
+                    MessageBox.Show("文件不存在");
+                    return;
+                }
+                // 检查文件扩展名、如果不是.tif或.pngOffsetTable
+                if (Path.GetExtension(filePath) != ".json")
+                {
+                    MessageBox.Show("只能加载.json文件");
+                    return;
+                }
+                // 加载标注
+                try
+                {
+                    var (annotations, image) = ImageProcessingJson.LoadImageAnnotation(filePath);
+                    OpenImage(image);
+                    _annotations = annotations;
+                }
+                catch (Exception ex)
+                {
+                    // 处理加载标注时发生的异常，例如弹出警告
+                    MessageBox.Show("加载标注时发生错误：" + ex.Message);
+                }
+            }
+        }
+
         //private void UpdateDeviceStatusLabel(string status)
         //{
         //    switch (status)
@@ -681,7 +772,7 @@ namespace HelloOpenCvSharp
         //}
     }
 
-    class Annotation
+    public class Annotation
     {
         public double X;
 

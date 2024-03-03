@@ -39,6 +39,9 @@
     <Reference Include="HZH_Controls, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\HZH_Controls.1.0.14\lib\net40\HZH_Controls.dll</HintPath>
     </Reference>
+    <Reference Include="Newtonsoft.Json, Version=13.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+      <HintPath>..\packages\Newtonsoft.Json.13.0.3\lib\net45\Newtonsoft.Json.dll</HintPath>
+    </Reference>
     <Reference Include="OpenCvSharp, Version=1.0.0.0, Culture=neutral, PublicKeyToken=6adad1e807fea099, processorArchitecture=MSIL">
       <HintPath>..\packages\OpenCvSharp4.4.9.0.20240103\lib\net48\OpenCvSharp.dll</HintPath>
     </Reference>
@@ -86,6 +89,7 @@
     <Compile Include="AnnotationForm.Designer.cs">
       <DependentUpon>AnnotationForm.cs</DependentUpon>
     </Compile>
+    <Compile Include="CvHelper.cs" />
     <Compile Include="HelloZoomForm.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -93,6 +97,7 @@
       <DependentUpon>HelloZoomForm.cs</DependentUpon>
     </Compile>
     <Compile Include="ImageProcessingControl.cs" />
+    <Compile Include="ImageProcessingJson.cs" />
     <Compile Include="MainForm.cs">
       <SubType>Form</SubType>
     </Compile>

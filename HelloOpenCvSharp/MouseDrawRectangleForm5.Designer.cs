@@ -35,6 +35,8 @@
             this.pictureBox1 = new System.Windows.Forms.PictureBox();
             this.openImageButton = new System.Windows.Forms.Button();
             this.labelTextBox = new System.Windows.Forms.TextBox();
+            this.saveAnnotationsButton = new System.Windows.Forms.Button();
+            this.loadAnnotationsButton = new System.Windows.Forms.Button();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
             this.SuspendLayout();
             // 
@@ -100,6 +102,24 @@
             this.labelTextBox.TabIndex = 11;
             this.labelTextBox.Text = "solder ball";
             // 
+            // saveAnnotationsButton
+            // 
+            this.saveAnnotationsButton.Location = new System.Drawing.Point(12, 491);
+            this.saveAnnotationsButton.Name = "saveAnnotationsButton";
+            this.saveAnnotationsButton.Size = new System.Drawing.Size(107, 63);
+            this.saveAnnotationsButton.TabIndex = 6;
+            this.saveAnnotationsButton.Text = "保存标注";
+            this.saveAnnotationsButton.UseVisualStyleBackColor = true;
+            // 
+            // loadAnnotationsButton
+            // 
+            this.loadAnnotationsButton.Location = new System.Drawing.Point(12, 560);
+            this.loadAnnotationsButton.Name = "loadAnnotationsButton";
+            this.loadAnnotationsButton.Size = new System.Drawing.Size(107, 63);
+            this.loadAnnotationsButton.TabIndex = 6;
+            this.loadAnnotationsButton.Text = "加载标注";
+            this.loadAnnotationsButton.UseVisualStyleBackColor = true;
+            // 
             // MouseDrawRectangleForm5
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(9F, 18F);
@@ -111,6 +131,8 @@
             this.Controls.Add(this.btnDrawDistanceLine);
             this.Controls.Add(this.btnDrawAnnotation);
             this.Controls.Add(this.pictureBox1);
+            this.Controls.Add(this.loadAnnotationsButton);
+            this.Controls.Add(this.saveAnnotationsButton);
             this.Controls.Add(this.openImageButton);
             this.Name = "MouseDrawRectangleForm5";
             this.Text = "MouseDrawRectangleForm5";
@@ -129,5 +151,7 @@
         private System.Windows.Forms.PictureBox pictureBox1;
         private System.Windows.Forms.Button openImageButton;
         private System.Windows.Forms.TextBox labelTextBox;
+        private System.Windows.Forms.Button saveAnnotationsButton;
+        private System.Windows.Forms.Button loadAnnotationsButton;
     }
 }

@@ -25,16 +25,21 @@ namespace HelloOpenCvSharp
             imageProcessingControl = new ImageProcessingControl(this.pictureBox1, this.labelTextBox.Text);
             imageProcessingControl.ParentInvalidate += (sender, e) => { this.Invalidate(); };
 
-            openImageButton.Click += new EventHandler(openImageButton_Click);
+            openImageButton.Click += openImageButton_Click;
             NearestNeighborCheckBox.CheckedChanged += new EventHandler(NearestNeighborCheckBox_CheckedChanged);
             InitializeButtonEvents();
+
+            saveAnnotationsButton.Click += (sender, e) => { imageProcessingControl.SaveAnnotations(); };
+            loadAnnotationsButton.Click += (sender, e) => { imageProcessingControl.LoadAnnotations(); };
+
          }
 
         private void openImageButton_Click(object sender, EventArgs e)
         {
             string filename = "";
             OpenFileDialog dlg = new OpenFileDialog();
-            dlg.Filter = "Tiff文件|*.tif|Bmp文件|*.bmp|Erdas img文件|*.img|EVNI文件|*.hdr|jpeg文件|*.jpg|raw文件|*.raw|vrt文件|*.vrt|所有文件|*.*";
+            //dlg.Filter = "Tiff文件|*.tif|Bmp文件|*.bmp|Erdas img文件|*.img|EVNI文件|*.hdr|jpeg文件|*.jpg|raw文件|*.raw|vrt文件|*.vrt|所有文件|*.*";
+            dlg.Filter = "Tiff文件|*.tif|Png文件|*.png|Bmp文件|*.bmp|jpeg文件|*.jpg";
             dlg.FilterIndex = 8;
             if (dlg.ShowDialog() == DialogResult.OK)
             {
@@ -44,8 +49,16 @@ namespace HelloOpenCvSharp
             {
                 return;
             }
-            imageProcessingControl.OpenImage(filename);
-            this.Text = filename;
+            try
+            {
+                imageProcessingControl.OpenImage(filename);
+                this.Text = filename;
+            }
+            catch (Exception ex)
+            {
+                // 显示错误信息
+                MessageBox.Show($"打开图像错误，{ex.Message}", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
         #region 操作模式切换
